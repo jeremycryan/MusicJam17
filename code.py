@@ -24,6 +24,8 @@ pygame.display.set_caption("Command Prompt")
 self.screen.fill((0, 0, 0))
 self.framerate = 50
 
+#   This just got a little too meta.
+
 self.beat_length = 500
 self.current_color = 0
 self.multiplier = 1.0
@@ -37,15 +39,15 @@ self.goal_pos = (60, WINDOW_HEIGHT-55)
 
 self.code_font = pygame.font.SysFont("monospace", 20)
 self.multiplier_font = pygame.font.SysFont("monospace", 50)
+self.win_font = pygame.font.SysFont("monospace", 35)
 self.clock = pygame.time.Clock()
 
-self.key_list = [pygame.K_s,
-    pygame.K_d,
-    pygame.K_f,
-    pygame.K_j,
-    pygame.K_k,
-    pygame.K_l,
-    pygame.K_SEMICOLON]
+self.key_list = [pygame.K_q, pygame.K_w, pygame.K_e, pygame.K_r,
+pygame.K_t, pygame.K_y, pygame.K_u, pygame.K_i, pygame.K_o,
+pygame.K_p, pygame.K_a, pygame.K_s, pygame.K_d, pygame.K_f,
+pygame.K_g, pygame.K_h, pygame.K_j, pygame.K_k, pygame.K_l,
+pygame.K_z, pygame.K_x, pygame.K_c, pygame.K_v, pygame.K_b,
+pygame.K_n, pygame.K_m, pygame.K_RETURN]
 self.last_presses = self.determine_keypresses()
 
 self.code = CODE
@@ -72,39 +74,63 @@ self.shock_offset = 0
 
 self.score = 0
 
+self.success_sound = pygame.mixer.Sound('success.wav')
+self.success_sound.set_volume(0.4)
+self.failure_sound = pygame.mixer.Sound('failure.wav')
+self.failure_sound.set_volume(0.7)
+
 self.beat_list = [8, 16,
-        24, 28,
-        #   First chorus
-        32, 36,
-        40, 44, 48, 52,
-        56, 60, 64, 68,
-        72, 76,
-        80, 82, 84,
-        88, 90, 92,
-        #   Second chorus
-        96, 98, 100,
-        104, 106, 108,
-        112, 114, 116,
-        120, 123, 125,
-        128, 130, 132,
-        136, 139, 142,
-        144, 148, 150,
-        152, 156, 158,
-        160, 162, 164,
-        168, 170, 172,
-        176, 178, 180, 182,
-        184, 186, 188, 190,
-        #   Third chorus
-        192]
+24, 28,
+#   First chorus
+32, 36,
+40, 44, 48, 52,
+56, 60, 64, 68,
+72, 76,
+80, 82, 84,
+88, 90, 92,
+#   Second chorus
+96, 98, 100,
+104, 106, 108,
+112, 114, 116,
+120, 123, 125,
+128, 130, 132,
+136, 139, 142,
+144, 148, 150,
+152, 156, 158,
+160, 162, 164,
+168, 170, 172,
+176, 178, 180, 182,
+184, 186, 188,
+#   Third chorus
+192, 194, 195,
+200, 204, 207,
+208, 212,
+216, 217, 218,
+224, 226, 228,
+232, 233, 234, 235,
+236, 239,
+241, 243,
+244, 246,
+248, 249, 250, 251,
+252,
+256, 258, 260, 262,
+264, 265, 266, 267,
+268, 270, 271,
+272,
+276]
 
-
-def render_score(self):
+def render_score(self, pos):
 a = 10 - len(str(self.score))
+if pos == 0:
 string = game.code_font.render("Score: %s%s  Juice:" % ("0" * a, self.score), 1, (255, 255, 255))
 self.screen.blit(string,
 (120 + self.shock_offset,
 50 + self.shock_offset))
-
+elif pos == 1:
+string = game.code_font.render("Score: %s" % (self.score), 1, (255, 255, 255))
+self.screen.blit(string,
+(300 + self.shock_offset,
+260 + self.shock_offset))
 
 def render_goal(self, size):
 self.goal_size = (size, size)
@@ -174,8 +200,8 @@ hack = game.code_font.render(line, 1, (t/2+32, t/2+96, t/2+128))
 else:
 hack = game.code_font.render(line, 1, (t, t, t))
 self.screen.blit(hack,
-        (start_position[0] + self.shock_offset,
-        current_y_position + self.additional_offset + self.shock_offset))
+(start_position[0] + self.shock_offset,
+current_y_position + self.additional_offset + self.shock_offset))
 current_y_position -= yspacing
 
 def update_lines(self, line):
@@ -210,6 +236,7 @@ multiplier_mentioned = 0
 flashy = 0
 self.last_error = self.time_ms
 beat = 0
+won = 0
 while True:
 pygame.event.pump()
 pressed = self.presses_since_last()
@@ -224,29 +251,30 @@ if self.current_color >= 3:
 self.current_color = 0
 if beat + 4 in self.beat_list:
 self.bang_list.append(Bang(self.time_ms + self.beat_length * 4,
-    self.beat_length))
+self.beat_length))
 time_since_semicolon += time_diff
-for key in pressed[0:6]:
+for key in pressed[0:-1]:
 if key == 1:
 progress = min(progress + 0.15, 1.0)
-if pressed[6]==1 and time_since_semicolon > 0.05 and progress == 1:
+if pressed[-1]==1 and time_since_semicolon > 0.05 and progress == 1:
 for item in self.bang_list:
 if abs(item.beats_away(self.time_ms)) <= press_tolerance:
-    self.multiplier += 1
-    flashy = 1
-    if self.multiplier % 5 == 0:
-        self.update_lines("Current multiplier: %s" % self.multiplier)
-
-    self.update_lines(self.get_next_line()+";")
-    time_since_semicolon = 0
-    progress = 0
-    self.destroy_bang(item)
-    self.make_flash()
-    self.shock_offset = 5
+self.multiplier += 1
+flashy = 1
+if self.multiplier % 5 == 0:
+self.update_lines("Current multiplier: %s" % self.multiplier)
+self.success_sound.play()
+self.update_lines(self.get_next_line()+"")
+time_since_semicolon = 0
+progress = 0
+self.destroy_bang(item)
+self.make_flash()
+self.shock_offset = 5
 
 for item in self.bang_list:
 if item.beats_away(self.time_ms) < -press_tolerance:
-self.health = max(0, self.health - 40)
+self.failure_sound.play()
+self.health = max(0, self.health - 30)
 self.destroy_bang(item)
 self.shock_offset = 50
 self.update_lines(self.get_warning_message())
@@ -278,11 +306,41 @@ self.render_current_line(progress)
 self.additional_offset -= self.additional_offset * time_diff/100.0
 self.shock_offset *= -0.6
 self.score += int(self.multiplier * time_diff)
-self.health = min(self.health + time_diff/300.0, 100)
-self.render_score()
+if self.health != 0:
+self.health = min(self.health + time_diff/200.0, 100)
+self.render_score(0)
 if abs(self.shock_offset) <= 1:
 self.shock_offset = 0
 
+if beat > 280 or self.health == 0:
+won = self.health > 0
+break
+
+for event in pygame.event.get():
+if event.type == pygame.QUIT:
+pygame.display.quit()
+pygame.quit()
+sys.exit()
+
+pygame.display.flip()
+
+while 1:
+time_diff = self.clock.tick(self.framerate)
+prev_time = self.time_ms
+self.time_ms += time_diff
+
+if prev_time % self.beat_length > self.time_ms % self.beat_length:
+self.current_color = (self.current_color + 1)%3
+self.shock_offset += 12
+
+dif = (self.time_ms % self.beat_length)*1.0/self.beat_length
+self.render_background(dif)
+self.render_you_win(won)
+self.render_score(1)
+
+self.shock_offset *= -0.6
+if abs(self.shock_offset) <= 1:
+self.shock_offset = 0
 pygame.display.flip()
 
 def render_health(self):
@@ -306,6 +364,14 @@ self.healthbar_color[2])
 self.healthbar_health += 3*(self.health - self.healthbar_health)/self.framerate
 pygame.draw.rect(surf, color, (0, 0, 3*self.healthbar_health, 16))
 self.screen.blit(surf, (432 + self.shock_offset, 52 + self.shock_offset))
+
+def render_you_win(self, won):
+if won:
+text = "Task completed."
+else:
+text = "Task failed."
+text_obj = self.win_font.render(text, 1, (255, 255, 255))
+self.screen.blit(text_obj, (255 + self.shock_offset, 200 + self.shock_offset))
 
 def render_background(self, dif):
 self.screen.fill((10, 10, 10))
